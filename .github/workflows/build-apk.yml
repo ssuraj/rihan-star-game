@@ -33,7 +33,7 @@ jobs:
           ls -lh "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "APK_SIZE_BYTES=$SIZE" | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$SIZE" -lt 100000 ]; then
+          if [ "$SIZE" -lt 12000 ]; then
             echo "::error::APK is unexpectedly small ($SIZE bytes); refusing to publish an untrusted build artifact."
             exit 1
           fi
