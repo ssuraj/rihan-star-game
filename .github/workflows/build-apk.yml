@@ -23,7 +23,34 @@ jobs:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - name: Build debug APK
         run: gradle assembleDebug
+      - name: Verify APK exists, size, and archive integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          echo "APK details:"
+          ls -lh "$APK"
+          SIZE=$(stat -c%s "$APK")
+          echo "APK_SIZE_BYTES=$SIZE" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$SIZE" -lt 100000 ]; then
+            echo "::error::APK is unexpectedly small ($SIZE bytes); refusing to publish an untrusted build artifact."
+            exit 1
+          fi
+          unzip -t "$APK"
+          echo "APK archive integrity: PASS" | tee -a "$GITHUB_STEP_SUMMARY"
+          unzip -l "$APK" | tee /tmp/apk-contents.txt
+          if ! grep -q 'AndroidManifest.xml' /tmp/apk-contents.txt; then
+            echo "::error::AndroidManifest.xml is missing from APK."
+            exit 1
+          fi
+          if ! grep -q 'assets/index.html' /tmp/apk-contents.txt; then
+            echo "::error::Game assets/index.html is missing from APK."
+            exit 1
+          fi
+          echo "Required Android manifest and game HTML assets: PASS" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: Rihan-Star-APK
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
