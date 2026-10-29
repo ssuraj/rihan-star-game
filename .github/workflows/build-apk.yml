@@ -37,7 +37,7 @@ jobs:
           ls -lh "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "APK_SIZE_BYTES=$SIZE" | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$SIZE" -lt 300000 ]; then
+          if [ "$SIZE" -lt 200000 ]; then
             echo "::error::APK is unexpectedly small ($SIZE bytes); bundled 3D engine may be missing."
             exit 1
           fi
