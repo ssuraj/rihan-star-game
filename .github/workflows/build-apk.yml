@@ -21,8 +21,12 @@ jobs:
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-      - name: Build debug APK
-        run: gradle assembleDebug
+      - name: Verify bundled 3D engine and build debug APK
+        run: |
+          set -euo pipefail
+          test -s app/src/main/assets/three.min.js
+          echo "Bundled Three.js bytes: $(stat -c%s app/src/main/assets/three.min.js)"
+          gradle assembleDebug
       - name: Verify APK exists, size, and archive integrity
         shell: bash
         run: |
@@ -33,8 +37,8 @@ jobs:
           ls -lh "$APK"
           SIZE=$(stat -c%s "$APK")
           echo "APK_SIZE_BYTES=$SIZE" | tee -a "$GITHUB_STEP_SUMMARY"
-          if [ "$SIZE" -lt 12000 ]; then
-            echo "::error::APK is unexpectedly small ($SIZE bytes); refusing to publish an untrusted build artifact."
+          if [ "$SIZE" -lt 300000 ]; then
+            echo "::error::APK is unexpectedly small ($SIZE bytes); bundled 3D engine may be missing."
             exit 1
           fi
           unzip -t "$APK"
@@ -48,7 +52,15 @@ jobs:
             echo "::error::Game assets/index.html is missing from APK."
             exit 1
           fi
-          echo "Required Android manifest and game HTML assets: PASS" | tee -a "$GITHUB_STEP_SUMMARY"
+          if ! grep -q "assets/three.min.js" /tmp/apk-contents.txt; then
+            echo "::error::Bundled Three.js engine is missing from APK."
+            exit 1
+          fi
+          if ! grep -q "assets/THREE-LICENSE.txt" /tmp/apk-contents.txt; then
+            echo "::error::Three.js license notice is missing from APK."
+            exit 1
+          fi
+          echo "Required manifest, game HTML, local 3D engine, and license: PASS" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: Rihan-Star-APK
